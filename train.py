@@ -19,6 +19,7 @@ import resnet as RN
 import pyramidnet as PYRM
 import utils
 import numpy as np
+from tqdm import tqdm
 
 import warnings
 
@@ -176,7 +177,7 @@ def main():
 
     cudnn.benchmark = True
 
-    for epoch in range(0, args.epochs):
+    for epoch in tqdm(range(0, args.epochs)):
 
         adjust_learning_rate(optimizer, epoch)
 
@@ -217,7 +218,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     end = time.time()
     current_LR = get_learning_rate(optimizer)[0]
-    for i, (input, target) in enumerate(train_loader):
+    for i, (input, target) in enumerate(tqdm(train_loader)):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -398,7 +399,7 @@ def accuracy(output, target, topk=(1,)):
 
     res = []
     for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
         wrong_k = batch_size - correct_k
         res.append(wrong_k.mul_(100.0 / batch_size))
 
