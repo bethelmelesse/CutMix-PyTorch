@@ -4,7 +4,7 @@
 # python train.py \
 
 # python -m debugpy --listen 5678 --wait-for-client train.py \
-python train_cutmix.py \
+python train_blendmix.py \
 --net_type resnet \
 --dataset FashionMNIST \
 --depth 34 \
