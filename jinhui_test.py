@@ -1,7 +1,3 @@
-import torch
-import PIL
-from torchvision import transforms
-from torch.autograd import Variable
 import matplotlib.pyplot as plt
 import numpy as np
 
