@@ -1,10 +1,13 @@
+#!/usr/bin/env bash
+
+# python -m debugpy --listen 5678 --wait-for-client train.py \
 python train.py \
 --net_type resnet \
 --dataset cifar100 \
 --depth 34 \
 --batch_size 64 \
 --lr 0.25 \
---expname PyraNet200 \
+--expname blendmix_cifar_34 \
 --epochs 300 \
 --beta 1.0 \
 --cutmix_prob 0.5 \

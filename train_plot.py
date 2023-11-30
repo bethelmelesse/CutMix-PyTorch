@@ -20,7 +20,6 @@ import pyramidnet as PYRM
 import utils
 import numpy as np
 import matplotlib.pyplot as plt
-import multiprocessing
 from tqdm import tqdm
 
 from skimage.io import imread
@@ -101,7 +100,7 @@ def reconstruct_image_from_laplacian_pyramid(pyramid):
     j = 1
     while i >= 0:
         prev = resize(pyramid_expand(prev, upscale=2, channel_axis=0), pyramid[i].shape)
-        im = np.clip(pyramid[i] + prev,-1,1)
+        im = np.clip(pyramid[i] + prev,0,1)
         #plt.subplot(3,3,j)
         # plt.imshow(im)
         # plt.title('Level=' + str(j) + ', ' + str(im.shape[0]) + 'x' + str(im.shape[1]), size=20)
@@ -134,10 +133,10 @@ def main():
     args = parser.parse_args()
 
     if args.dataset.startswith('cifar'):
-        normalize = transforms.Normalize(mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
-                                         std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
-        # normalize = transforms.Normalize(mean=[x / 255.0 for x in [0, 0, 0]],
-        #                                  std=[x / 255.0 for x in [255.0, 255.0, 255.0]])
+        # normalize = transforms.Normalize(mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
+        #                                  std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
+        normalize = transforms.Normalize(mean=[x / 255.0 for x in [0, 0, 0]],
+                                         std=[x / 255.0 for x in [255.0, 255.0, 255.0]])
 
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -266,13 +265,6 @@ def main():
 
     print('Best accuracy (top-1 and 5 error):', best_err1, best_err5)
 
-def blend_caller(args):
-    A, B, bbx1, bby1, bbx2, bby2 = args
-    A=A.numpy()
-    B=B.numpy()
-    M=create_mask(bbx1, bby1, bbx2, bby2, A)
-    blended_image=blend_images(A, B, M)
-    return blended_image
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
@@ -286,79 +278,84 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     end = time.time()
     current_LR = get_learning_rate(optimizer)[0]
-    
-    with multiprocessing.Pool(processes=12) as pool:
-        for i, (input, target) in enumerate(tqdm(train_loader)):
-            # measure data loading time
-            data_time.update(time.time() - end)
+    for i, (input, target) in enumerate(tqdm(train_loader)):
+        # measure data loading time
+        data_time.update(time.time() - end)
 
-            # input = input.cuda()
-            target = target.cuda()
+        input = input.cuda()
+        target = target.cuda()
 
-            r = np.random.rand(1)
-            if args.beta > 0 and r < args.cutmix_prob:
-                # generate mixed sample
-                lam = np.random.beta(args.beta, args.beta)
-                rand_index = torch.randperm(input.size()[0])
-                target_a = target
-                target_b = target[rand_index]
-                bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
+        r = np.random.rand(1)
+        if args.beta > 0 and r < args.cutmix_prob:
+            # generate mixed sample
+            lam = np.random.beta(args.beta, args.beta)
+            rand_index = torch.randperm(input.size()[0]).cuda()
+            target_a = target
+            target_b = target[rand_index]
+            bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
+            max_val = input.abs().max().item()
+            input = input/max_val
 
-                # BlendMix
-                max_val = input.abs().max().item()
-                input = input/max_val
-                input2=torch.zeros_like(input)
 
-                batch_size = input.shape[0]
-                all_args = []
-                for i in range(batch_size):
-                    all_args.append((input[i], input[rand_index[i]], bbx1, bby1, bbx2, bby2))
-                all_blended_images = pool.map(blend_caller, all_args)
-                input2=torch.tensor(all_blended_images, dtype=input.dtype)
+            A=input[0,:,:,:].cpu().numpy()
+            B=input[rand_index[0]].cpu().numpy()
+            M=create_mask(bbx1, bby1, bbx2, bby2, A)
+            blended_image=blend_images(A, B, M)
+            cutmix_image=np.copy(A)
+            cutmix_image[:, bbx1:bbx2, bby1:bby2] = B[:, bbx1:bbx2, bby1:bby2]
+            f, axarr = plt.subplots(2,3)
 
-                input2*=max_val
-                input=input2.cuda()
+            A2=np.transpose(A,(2,1,0))
+            B2=np.transpose(B,(2,1,0))
+            M2=np.transpose(M,(2,1,0))
+            blended_image2=np.transpose(blended_image,(2,1,0))
+            cutmix_image2=np.transpose(cutmix_image,(2,1,0))
 
-                # Original cutmix below
-                # input=input.cuda()
-                # input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
-                # adjust lambda to exactly match pixel ratio
-                lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
-                # compute output
-                output = model(input)
-                loss = criterion(output, target_a) * lam + criterion(output, target_b) * (1. - lam)
-            else:
-                input = input.cuda()
-                # compute output
-                output = model(input)
-                loss = criterion(output, target)
+            axarr[0,0].imshow(A2)
+            axarr[0,1].imshow(B2)
+            axarr[1,0].imshow(M2)
+            axarr[1,1].imshow(blended_image2)
+            axarr[1,2].imshow(cutmix_image2)
+            plt.show()
+            print()
 
-            # measure accuracy and record loss
-            err1, err5 = accuracy(output.data, target, topk=(1, 5))
+            input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
+            # adjust lambda to exactly match pixel ratio
+            lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
+            # compute output
+            output = model(input)
+            loss = criterion(output, target_a) * lam + criterion(output, target_b) * (1. - lam)
+        else:
+            # compute output
+            output = model(input)
+            loss = criterion(output, target)
 
-            losses.update(loss.item(), input.size(0))
-            top1.update(err1.item(), input.size(0))
-            top5.update(err5.item(), input.size(0))
+        # measure accuracy and record loss
+        err1, err5 = accuracy(output.data, target, topk=(1, 5))
 
-            # compute gradient and do SGD step
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        losses.update(loss.item(), input.size(0))
+        top1.update(err1.item(), input.size(0))
+        top5.update(err5.item(), input.size(0))
 
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+        # compute gradient and do SGD step
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            if i % args.print_freq == 0 and args.verbose == True:
-                print('Epoch: [{0}/{1}][{2}/{3}]\t'
-                    'LR: {LR:.6f}\t'
-                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                    'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                    'Top 1-err {top1.val:.4f} ({top1.avg:.4f})\t'
-                    'Top 5-err {top5.val:.4f} ({top5.avg:.4f})'.format(
-                    epoch, args.epochs, i, len(train_loader), LR=current_LR, batch_time=batch_time,
-                    data_time=data_time, loss=losses, top1=top1, top5=top5))
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if i % args.print_freq == 0 and args.verbose == True:
+            print('Epoch: [{0}/{1}][{2}/{3}]\t'
+                  'LR: {LR:.6f}\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Top 1-err {top1.val:.4f} ({top1.avg:.4f})\t'
+                  'Top 5-err {top5.val:.4f} ({top5.avg:.4f})'.format(
+                epoch, args.epochs, i, len(train_loader), LR=current_LR, batch_time=batch_time,
+                data_time=data_time, loss=losses, top1=top1, top5=top5))
 
     print('* Epoch: [{0}/{1}]\t Top 1-err {top1.avg:.3f}  Top 5-err {top5.avg:.3f}\t Train Loss {loss.avg:.3f}'.format(
         epoch, args.epochs, top1=top1, top5=top5, loss=losses))
