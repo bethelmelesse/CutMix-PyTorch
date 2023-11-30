@@ -3,8 +3,6 @@ import numpy as np
 
 from skimage.io import imread
 from skimage.transform import pyramid_reduce, pyramid_laplacian, pyramid_expand, resize
-import torch.nn.functional as F
-
 
 def get_gaussian_pyramid(image):
     rows, cols, dim = image.shape
