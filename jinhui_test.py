@@ -134,27 +134,3 @@ axarr[1,1].imshow(im)
 # plt.imshow(M)
 plt.show()
 print()
-
-
-
-
-
-# import cv2 
-# soft_mask = mask.astype(np.float32) / 255.0
-
-# blurred_mask = cv2.GaussianBlur(soft_mask, (21, 21), 0)
-# blurred_mask = np.clip(blurred_mask, 0, 1)
-
-# combined_images = A* blurred_mask + B*(1- blurred_mask)
-# combined_image = np.clip(combined_imag, 0, 255).astype(np.uint8)
-
-
-# if isinstance(pyramidM[i], np.ndarray):
-    #     pyramidM_tens = torch.from_numpy(pyramidM[i])
-    # else:
-    #     pyramidM_tens = pyramidM[i]
-
-    # upsample = torch.nn.functional.interpolate((pyramidM_tens).unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False).squeeze(0)
-    # x = pyramidM[i].transpose(2, 0)*pyramidA[i]
-    # y = (1-pyramidM[i]).transpose(2, 0)*pyramidB[i]
-    # im = x + y
