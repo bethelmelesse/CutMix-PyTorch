@@ -212,6 +212,33 @@ def main():
             num_workers=args.workers, pin_memory=True)
         numberofclass = 1000
 
+    elif args.dataset == 'FashionMNIST':
+        # normalize = transforms.Normalize(mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
+        #                                  std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
+        # normalize = transforms.Normalize(mean=[x / 255.0 for x in [0, 0, 0]],
+        #                                  std=[x / 255.0 for x in [255.0, 255.0, 255.0]])
+
+        transform_train = transforms.Compose([
+            # transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor()
+            # normalize,
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.ToTensor()
+            # normalize
+        ])    
+
+        train_loader = torch.utils.data.DataLoader(
+            datasets.FashionMNIST('../data', train=True, download=True, transform=transform_train),
+            batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+        
+        val_loader = torch.utils.data.DataLoader(
+            datasets.FashionMNIST('../data', train=False, transform=transform_test),
+            batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+        numberofclass = 10
+
     else:
         raise Exception('unknown dataset: {}'.format(args.dataset))
 
@@ -465,6 +492,8 @@ def adjust_learning_rate(optimizer, epoch):
             lr = args.lr * (0.1 ** (epoch // 75))
         else:
             lr = args.lr * (0.1 ** (epoch // 30))
+    elif args.dataset == ('FashionMNIST'):
+        lr = args.lr * (0.1 ** (epoch // (args.epochs * 0.5))) * (0.1 ** (epoch // (args.epochs * 0.75)))
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr

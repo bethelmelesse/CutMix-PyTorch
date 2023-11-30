@@ -120,6 +120,25 @@ class ResNet(nn.Module):
             self.avgpool = nn.AvgPool2d(7) 
             self.fc = nn.Linear(512 * blocks[depth].expansion, num_classes)
 
+        elif dataset == 'FashionMNIST':
+            self.inplanes = 16
+            print(bottleneck)
+            if bottleneck == True:
+                n = int((depth - 2) / 9)
+                block = Bottleneck
+            else:
+                n = int((depth - 2) / 6)
+                block = BasicBlock
+
+            self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
+            self.bn1 = nn.BatchNorm2d(self.inplanes)
+            self.relu = nn.ReLU(inplace=True)
+            self.layer1 = self._make_layer(block, 16, n)
+            self.layer2 = self._make_layer(block, 32, n, stride=2)
+            self.layer3 = self._make_layer(block, 64, n, stride=2) 
+            self.avgpool = nn.AvgPool2d(8)
+            self.fc = nn.Linear(64 * block.expansion, num_classes)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -147,6 +166,21 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         if self.dataset == 'cifar10' or self.dataset == 'cifar100':
+            x = self.conv1(x)
+            x = self.bn1(x)
+            x = self.relu(x)
+            
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+
+            x = self.avgpool(x)
+            x = x.view(x.size(0), -1)
+            x = self.fc(x)
+
+        elif self.dataset == 'FashionMNIST':
+            x = nn.functional.interpolate(x, size=32, mode='nearest-exact')
+            # x = nn.ZeroPad2d((0, 7, 0, 7))
             x = self.conv1(x)
             x = self.bn1(x)
             x = self.relu(x)
