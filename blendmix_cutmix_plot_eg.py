@@ -109,13 +109,32 @@ blend_mix=blend_images(A, B, M)
 
 # visualize 
 f, axarr = plt.subplots(2,3)
-axarr[0,0].imshow(A)
-axarr[0,1].imshow(B)
-axarr[1,0].imshow(M)
-axarr[1,1].imshow(blend_mix)
-axarr[1,2].imshow(cutmix)
-            
 
+
+axarr[0,0].imshow(A)
+axarr[0, 0].set_title("Image A")
+axarr[0, 0].axis("off")
+
+axarr[0,1].imshow(B)
+axarr[0, 1].set_title("Image B")
+axarr[0, 1].axis("off")
+
+axarr[1,0].imshow(M)
+axarr[1, 0].set_title("Mask Image")
+axarr[1, 0].set_xticks([])
+axarr[1, 0].set_yticks([])
+
+axarr[1,1].imshow(blend_mix)
+axarr[1, 1].set_title("Blend Mix")
+axarr[1, 1].axis("off")
+
+
+axarr[0, 2].axis("off")
+
+axarr[1,2].imshow(cutmix)
+axarr[1, 2].set_title("Cut Mix")
+axarr[1, 2].axis("off")
+            
 # plt.axis('off')
 # plt.imshow(M)
 plt.show()
