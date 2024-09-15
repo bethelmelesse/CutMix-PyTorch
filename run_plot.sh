@@ -5,7 +5,7 @@
 
 python -m debugpy --listen 5678 --wait-for-client train_plot.py \
 --net_type resnet \
---dataset FashionMNIST \
+--dataset cifar100 \
 --depth 34 \
 --batch_size 64 \
 --lr 0.25 \

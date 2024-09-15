@@ -219,7 +219,8 @@ def main():
 
         transform_train = transforms.Compose([
             # transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.functional.rotate(angle=180),
             transforms.ToTensor()
             # normalize,
         ])
@@ -338,25 +339,30 @@ def train(train_loader, model, criterion, optimizer, epoch):
             blended_image2=np.transpose(blended_image,(2,1,0))
             cutmix_image2=np.transpose(cutmix_image,(2,1,0))
 
+            # axarr[0,0].imshow(A2, cmap='gray')
             axarr[0,0].imshow(A2)
             axarr[0, 0].set_title("Image A")
             axarr[0, 0].axis("off")
 
+            # axarr[0,1].imshow(B2, cmap='gray')
             axarr[0,1].imshow(B2)
             axarr[0, 1].set_title("Image B")
             axarr[0, 1].axis("off")
 
+            # axarr[1,0].imshow(M2, cmap='gray')
             axarr[1,0].imshow(M2)
             axarr[1, 0].set_title("Mask Image")
             axarr[1, 0].set_xticks([])
             axarr[1, 0].set_yticks([])
 
+            # axarr[1,1].imshow(blended_image2, cmap='gray')
             axarr[1,1].imshow(blended_image2)
             axarr[1, 1].set_title("Blend Mix")
             axarr[1, 1].axis("off")
 
             axarr[0, 2].axis("off")
 
+            # axarr[1,2].imshow(cutmix_image2, cmap='gray')
             axarr[1,2].imshow(cutmix_image2)
             axarr[1, 2].set_title("Cut Mix")
             axarr[1, 2].axis("off")
